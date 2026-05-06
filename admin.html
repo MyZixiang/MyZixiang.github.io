@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QQ 二维码后台管理</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #eef5ff, #ffffff);
+      color: #1f2937;
+    }
+
+    .card {
+      width: min(92vw, 420px);
+      padding: 32px 24px;
+      text-align: center;
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+    }
+
+    .title {
+      margin: 0 0 20px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .form-group {
+      margin-top: 18px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border-color: #1677ff;
+      box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+    }
+
+    .qr-image {
+      width: 240px;
+      max-width: 100%;
+      height: 240px;
+      object-fit: contain;
+      margin-top: 10px;
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px 18px;
+      border: 0;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .primary {
+      margin-top: 22px;
+      background: #1677ff;
+      color: #ffffff;
+      box-shadow: 0 10px 22px rgba(22, 119, 255, 0.24);
+    }
+
+    .primary:hover {
+      background: #0f63d8;
+    }
+
+    .secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .danger {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .danger:hover {
+      background: #fecaca;
+    }
+
+    .tip {
+      margin: 14px 0 0;
+      min-height: 22px;
+      font-size: 14px;
+      color: #16a34a;
+      line-height: 1.5;
+    }
+
+    .error {
+      color: #dc2626;
+    }
+
+    .note {
+      margin: 18px 0 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f9fafb;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: left;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <section id="loginBox">
+      <h1 class="title">后台登录</h1>
+
+      <div class="form-group">
+        <label for="passwordInput">管理密码</label>
+        <input id="passwordInput" type="password" placeholder="请输入管理密码" />
+      </div>
+
+      <button class="primary" id="loginButton">进入后台</button>
+      <p class="tip" id="loginTip"></p>
+
+      <div class="note">
+        默认密码是：<strong>admin123</strong><br />
+        可以在代码里的 <strong>ADMIN_PASSWORD</strong> 修改。
+      </div>
+    </section>
+
+    <section id="adminBox" class="hidden">
+      <h1 class="title">QQ 信息管理</h1>
+
+      <div class="form-group">
+        <label for="qqInput">QQ 号</label>
+        <input id="qqInput" type="text" placeholder="请输入 QQ 号" />
+      </div>
+
+      <div class="form-group">
+        <label for="qrInput">更换二维码图片</label>
+        <input id="qrInput" type="file" accept="image/*" />
+      </div>
+
+      <p class="tip">当前二维码预览</p>
+      <img class="qr-image" id="qrPreview" src="./qq-qrcode.png" alt="QQ二维码预览" />
+
+      <button class="primary" id="saveButton">保存修改</button>
+      <button class="secondary" id="openFrontButton">打开前台页面</button>
+      <button class="danger" id="resetButton">恢复默认</button>
+      <button class="secondary" id="logoutButton">退出后台</button>
+
+      <p class="tip" id="adminTip"></p>
+
+      <div class="note">
+        保存后，<strong>index.html</strong> 会读取这里保存的 QQ 号和二维码。<br />
+        如果前台页面已经打开，刷新一下就能看到新内容。
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DEFAULT_QQ_NUMBER = "123456789";
+    const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
+
+    const ADMIN_PASSWORD = "admin123";
+
+    const STORAGE_QQ_KEY = "qq_number";
+    const STORAGE_QR_KEY = "qq_qr_image";
+
+    const loginBox = document.getElementById("loginBox");
+    const adminBox = document.getElementById("adminBox");
+
+    const passwordInput = document.getElementById("passwordInput");
+    const loginButton = document.getElementById("loginButton");
+    const logoutButton = document.getElementById("logoutButton");
+
+    const qqInput = document.getElementById("qqInput");
+    const qrInput = document.getElementById("qrInput");
+    const qrPreview = document.getElementById("qrPreview");
+
+    const saveButton = document.getElementById("saveButton");
+    const resetButton = document.getElementById("resetButton");
+    const openFrontButton = document.getElementById("openFrontButton");
+
+    const loginTip = document.getElementById("loginTip");
+    const adminTip = document.getElementById("adminTip");
+
+    let selectedQrImage = localStorage.getItem(STORAGE_QR_KEY) || DEFAULT_QR_IMAGE;
+
+    function showAdmin() {
+      loginBox.classList.add("hidden");
+      adminBox.classList.remove("hidden");
+      loadSettings();
+    }
+
+    function showLogin() {
+      adminBox.classList.add("hidden");
+      loginBox.classList.remove("hidden");
+      passwordInput.value = "";
+      loginTip.textContent = "";
+    }
+
+    function loadSettings() {
+      const qqNumber = localStorage.getItem(STORAGE_QQ_KEY) || DEFAULT_QQ_NUMBER;
+      const qrImage = localStorage.getItem(STORAGE_QR_KEY) || DEFAULT_QR_IMAGE;
+
+      qqInput.value = qqNumber;
+      qrPreview.src = qrImage;
+      selectedQrImage = qrImage;
+    }
+
+    function login() {
+      const password = passwordInput.value.trim();
+
+      if (password !== ADMIN_PASSWORD) {
+        loginTip.classList.add("error");
+        loginTip.textContent = "密码错误，请重新输入";
+        return;
+      }
+
+      loginTip.textContent = "";
+      showAdmin();
+    }
+
+    function saveSettings() {
+      const qqNumber = qqInput.value.trim();
+
+      if (!qqNumber) {
+        adminTip.classList.add("error");
+        adminTip.textContent = "QQ 号不能为空";
+        return;
+      }
+
+      localStorage.setItem(STORAGE_QQ_KEY, qqNumber);
+      localStorage.setItem(STORAGE_QR_KEY, selectedQrImage);
+
+      adminTip.classList.remove("error");
+      adminTip.textContent = "保存成功，前台页面已更新";
+
+      setTimeout(() => {
+        adminTip.textContent = "";
+      }, 2000);
+    }
+
+    function resetSettings() {
+      const isConfirm = confirm("确定要恢复默认 QQ 号和二维码吗？");
+      if (!isConfirm) return;
+
+      localStorage.removeItem(STORAGE_QQ_KEY);
+      localStorage.removeItem(STORAGE_QR_KEY);
+
+      qrInput.value = "";
+      loadSettings();
+
+      adminTip.classList.remove("error");
+      adminTip.textContent = "已恢复默认设置";
+    }
+
+    qrInput.addEventListener("change", function () {
+      const file = qrInput.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        adminTip.classList.add("error");
+        adminTip.textContent = "请选择图片文件";
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = function (event) {
+        selectedQrImage = event.target.result;
+        qrPreview.src = selectedQrImage;
+
+        adminTip.classList.remove("error");
+        adminTip.textContent = "图片已选择，点击保存后生效";
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    loginButton.addEventListener("click", login);
+
+    passwordInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        login();
+      }
+    });
+
+    saveButton.addEventListener("click", saveSettings);
+    resetButton.addEventListener("click", resetSettings);
+    logoutButton.addEventListener("click", showLogin);
+
+    openFrontButton.addEventListener("click", function () {
+      window.open("./index.html", "_blank");
+    });
+  </script>
+</body>
+</html>

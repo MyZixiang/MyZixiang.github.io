@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QQ 二维码</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #eef5ff, #ffffff);
+      color: #1f2937;
+    }
+
+    .card {
+      width: min(94vw, 680px);
+      padding: 32px 24px;
+      text-align: center;
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+    }
+
+    .title {
+      margin: 0 0 20px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .qr-image {
+      width: min(78vw, 520px);
+      height: min(78vw, 520px);
+      object-fit: contain;
+      padding: 14px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 22px;
+    }
+
+    .desc {
+      margin: 22px 0 0;
+      font-size: clamp(20px, 4.8vw, 30px);
+      font-weight: 800;
+      color: #dc2626;
+      line-height: 1.5;
+    }
+
+    .copy-button {
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px 18px;
+      border: 0;
+      border-radius: 999px;
+      background: #1677ff;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 10px 22px rgba(22, 119, 255, 0.24);
+    }
+
+    .copy-button:hover {
+      background: #0f63d8;
+      transform: translateY(-1px);
+    }
+
+    .copy-button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .tip {
+      margin: 14px 0 0;
+      min-height: 22px;
+      font-size: 14px;
+      color: #16a34a;
+      line-height: 1.5;
+    }
+
+    .error {
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1 class="title">扫码添加 QQ</h1>
+
+    <img class="qr-image" id="qrImage" src="./qq-qrcode.png" alt="QQ二维码" />
+
+    <p class="desc">手机截图扫描二维码或点击复制QQ号添加QQ</p>
+
+    <button class="copy-button" id="copyButton">点击此处复制QQ号</button>
+    <p class="tip" id="tip"></p>
+  </main>
+
+  <script>
+    // 默认配置：后台没有保存内容时，前台使用这里的内容
+    const DEFAULT_QQ_NUMBER = "123456789";
+    const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
+
+    // 这两个 key 必须和 admin.html 里的保持一致
+    const STORAGE_QQ_KEY = "qq_number";
+    const STORAGE_QR_KEY = "qq_qr_image";
+
+    const qrImage = document.getElementById("qrImage");
+    const copyButton = document.getElementById("copyButton");
+    const tip = document.getElementById("tip");
+
+    let currentQQNumber = DEFAULT_QQ_NUMBER;
+
+    function loadSettings() {
+      currentQQNumber = localStorage.getItem(STORAGE_QQ_KEY) || DEFAULT_QQ_NUMBER;
+      const savedQrImage = localStorage.getItem(STORAGE_QR_KEY) || DEFAULT_QR_IMAGE;
+      qrImage.src = savedQrImage;
+    }
+
+    async function copyQQNumber() {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(currentQQNumber);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = currentQQNumber;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textArea);
+        }
+
+        tip.classList.remove("error");
+        tip.textContent = `复制成功：${currentQQNumber}`;
+        copyButton.textContent = "已复制 QQ 号";
+
+        setTimeout(() => {
+          tip.textContent = "";
+          copyButton.textContent = "点击此处复制QQ号";
+        }, 2000);
+      } catch (error) {
+        tip.classList.add("error");
+        tip.textContent = "复制失败，请手动复制 QQ 号：" + currentQQNumber;
+      }
+    }
+
+    copyButton.addEventListener("click", copyQQNumber);
+
+    // 页面打开时读取后台保存的数据
+    loadSettings();
+
+    // 当前台页面已经打开，后台在另一个标签页保存后，前台会自动刷新显示
+    window.addEventListener("storage", loadSettings);
+  </script>
+</body>
+</html>
