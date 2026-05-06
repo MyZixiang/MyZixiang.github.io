@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QQ 二维码</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -31,7 +29,7 @@
 
     .title {
       margin: 0 0 20px;
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 700;
     }
 
@@ -61,22 +59,13 @@
       border-radius: 999px;
       background: #1677ff;
       color: #ffffff;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 18px;
+      font-weight: 700;
       cursor: pointer;
-      transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
       box-shadow: 0 10px 22px rgba(22, 119, 255, 0.24);
     }
 
-    .copy-button:hover {
-      background: #0f63d8;
-      transform: translateY(-1px);
-    }
-
-    .copy-button:active {
-      transform: translateY(0);
-      box-shadow: none;
-    }
+    .copy-button:hover { background: #0f63d8; }
 
     .tip {
       margin: 14px 0 0;
@@ -86,9 +75,7 @@
       line-height: 1.5;
     }
 
-    .error {
-      color: #dc2626;
-    }
+    .error { color: #dc2626; }
   </style>
 </head>
 <body>
@@ -103,14 +90,16 @@
     <p class="tip" id="tip"></p>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // 默认配置：后台没有保存内容时，前台使用这里的内容
+    // 这里换成你自己的 Supabase 项目信息
+    const SUPABASE_URL = "https://titerffyuwgosbrvfash.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_zqBKbdxgNpOkHi3ILUfgaQ_ZB3xvUO1";
+
     const DEFAULT_QQ_NUMBER = "123456789";
     const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
 
-    // 这两个 key 必须和 admin.html 里的保持一致
-    const STORAGE_QQ_KEY = "qq_number";
-    const STORAGE_QR_KEY = "qq_qr_image";
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const qrImage = document.getElementById("qrImage");
     const copyButton = document.getElementById("copyButton");
@@ -118,10 +107,25 @@
 
     let currentQQNumber = DEFAULT_QQ_NUMBER;
 
-    function loadSettings() {
-      currentQQNumber = localStorage.getItem(STORAGE_QQ_KEY) || DEFAULT_QQ_NUMBER;
-      const savedQrImage = localStorage.getItem(STORAGE_QR_KEY) || DEFAULT_QR_IMAGE;
-      qrImage.src = savedQrImage;
+    function updatePage(data) {
+      currentQQNumber = data?.qq_number || DEFAULT_QQ_NUMBER;
+      qrImage.src = data?.qr_image_url || DEFAULT_QR_IMAGE;
+    }
+
+    async function loadSettings() {
+      try {
+        const { data, error } = await client
+          .from("site_config")
+          .select("qq_number, qr_image_url")
+          .eq("id", 1)
+          .single();
+
+        if (error) throw error;
+        updatePage(data);
+      } catch (error) {
+        console.error("读取配置失败：", error);
+        updatePage(null);
+      }
     }
 
     async function copyQQNumber() {
@@ -156,11 +160,10 @@
 
     copyButton.addEventListener("click", copyQQNumber);
 
-    // 页面打开时读取后台保存的数据
     loadSettings();
 
-    // 当前台页面已经打开，后台在另一个标签页保存后，前台会自动刷新显示
-    window.addEventListener("storage", loadSettings);
+    // 页面长时间开着时，每 30 秒自动读取一次最新配置
+    setInterval(loadSettings, 30000);
   </script>
 </body>
 </html>

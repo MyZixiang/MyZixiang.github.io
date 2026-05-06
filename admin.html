@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QQ 二维码后台管理</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -22,7 +20,7 @@
     }
 
     .card {
-      width: min(92vw, 420px);
+      width: min(92vw, 460px);
       padding: 32px 24px;
       text-align: center;
       background: #ffffff;
@@ -64,9 +62,9 @@
     }
 
     .qr-image {
-      width: 240px;
+      width: 260px;
       max-width: 100%;
-      height: 240px;
+      height: 260px;
       object-fit: contain;
       margin-top: 10px;
       padding: 12px;
@@ -93,27 +91,21 @@
       box-shadow: 0 10px 22px rgba(22, 119, 255, 0.24);
     }
 
-    .primary:hover {
-      background: #0f63d8;
-    }
+    .primary:hover { background: #0f63d8; }
 
     .secondary {
       background: #f3f4f6;
       color: #374151;
     }
 
-    .secondary:hover {
-      background: #e5e7eb;
-    }
+    .secondary:hover { background: #e5e7eb; }
 
     .danger {
       background: #fee2e2;
       color: #b91c1c;
     }
 
-    .danger:hover {
-      background: #fecaca;
-    }
+    .danger:hover { background: #fecaca; }
 
     .tip {
       margin: 14px 0 0;
@@ -123,9 +115,7 @@
       line-height: 1.5;
     }
 
-    .error {
-      color: #dc2626;
-    }
+    .error { color: #dc2626; }
 
     .note {
       margin: 18px 0 0;
@@ -138,9 +128,7 @@
       text-align: left;
     }
 
-    .hidden {
-      display: none;
-    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -149,17 +137,17 @@
       <h1 class="title">后台登录</h1>
 
       <div class="form-group">
+        <label for="emailInput">管理员邮箱</label>
+        <input id="emailInput" type="email" placeholder="请输入管理员邮箱" />
+      </div>
+
+      <div class="form-group">
         <label for="passwordInput">管理密码</label>
         <input id="passwordInput" type="password" placeholder="请输入管理密码" />
       </div>
 
-      <button class="primary" id="loginButton">进入后台</button>
+      <button class="primary" id="loginButton">登录后台</button>
       <p class="tip" id="loginTip"></p>
-
-      <div class="note">
-        默认密码是：<strong>admin123</strong><br />
-        可以在代码里的 <strong>ADMIN_PASSWORD</strong> 修改。
-      </div>
     </section>
 
     <section id="adminBox" class="hidden">
@@ -180,30 +168,32 @@
 
       <button class="primary" id="saveButton">保存修改</button>
       <button class="secondary" id="openFrontButton">打开前台页面</button>
-      <button class="danger" id="resetButton">恢复默认</button>
-      <button class="secondary" id="logoutButton">退出后台</button>
+      <button class="danger" id="logoutButton">退出后台</button>
 
       <p class="tip" id="adminTip"></p>
 
       <div class="note">
-        保存后，<strong>index.html</strong> 会读取这里保存的 QQ 号和二维码。<br />
-        如果前台页面已经打开，刷新一下就能看到新内容。
+        保存后，所有访客打开前台都会读取 Supabase 云端最新内容。<br />
+        建议二维码图片小于 1MB。
       </div>
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // 这里换成你自己的 Supabase 项目信息
+    const SUPABASE_URL = "https://titerffyuwgosbrvfash.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_zqBKbdxgNpOkHi3ILUfgaQ_ZB3xvUO1";
+
     const DEFAULT_QQ_NUMBER = "123456789";
     const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
 
-    const ADMIN_PASSWORD = "admin123";
-
-    const STORAGE_QQ_KEY = "qq_number";
-    const STORAGE_QR_KEY = "qq_qr_image";
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const loginBox = document.getElementById("loginBox");
     const adminBox = document.getElementById("adminBox");
 
+    const emailInput = document.getElementById("emailInput");
     const passwordInput = document.getElementById("passwordInput");
     const loginButton = document.getElementById("loginButton");
     const logoutButton = document.getElementById("logoutButton");
@@ -213,50 +203,89 @@
     const qrPreview = document.getElementById("qrPreview");
 
     const saveButton = document.getElementById("saveButton");
-    const resetButton = document.getElementById("resetButton");
     const openFrontButton = document.getElementById("openFrontButton");
 
     const loginTip = document.getElementById("loginTip");
     const adminTip = document.getElementById("adminTip");
 
-    let selectedQrImage = localStorage.getItem(STORAGE_QR_KEY) || DEFAULT_QR_IMAGE;
+    let selectedFile = null;
+    let currentQrImageUrl = DEFAULT_QR_IMAGE;
 
     function showAdmin() {
       loginBox.classList.add("hidden");
       adminBox.classList.remove("hidden");
-      loadSettings();
     }
 
     function showLogin() {
       adminBox.classList.add("hidden");
       loginBox.classList.remove("hidden");
-      passwordInput.value = "";
-      loginTip.textContent = "";
     }
 
-    function loadSettings() {
-      const qqNumber = localStorage.getItem(STORAGE_QQ_KEY) || DEFAULT_QQ_NUMBER;
-      const qrImage = localStorage.getItem(STORAGE_QR_KEY) || DEFAULT_QR_IMAGE;
+    async function loadSettings() {
+      const { data, error } = await client
+        .from("site_config")
+        .select("qq_number, qr_image_url")
+        .eq("id", 1)
+        .single();
 
-      qqInput.value = qqNumber;
-      qrPreview.src = qrImage;
-      selectedQrImage = qrImage;
+      if (error) {
+        adminTip.classList.add("error");
+        adminTip.textContent = "读取配置失败，请检查数据库表和权限";
+        return;
+      }
+
+      qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
+      currentQrImageUrl = data.qr_image_url || DEFAULT_QR_IMAGE;
+      qrPreview.src = currentQrImageUrl;
     }
 
-    function login() {
+    async function login() {
+      const email = emailInput.value.trim();
       const password = passwordInput.value.trim();
 
-      if (password !== ADMIN_PASSWORD) {
+      if (!email || !password) {
         loginTip.classList.add("error");
-        loginTip.textContent = "密码错误，请重新输入";
+        loginTip.textContent = "请输入邮箱和密码";
+        return;
+      }
+
+      const { error } = await client.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        loginTip.classList.add("error");
+        loginTip.textContent = "登录失败，请检查邮箱或密码";
         return;
       }
 
       loginTip.textContent = "";
-      showAdmin();
     }
 
-    function saveSettings() {
+    async function uploadQrImageIfNeeded() {
+      if (!selectedFile) return currentQrImageUrl;
+
+      const fileExt = selectedFile.name.split(".").pop() || "png";
+      const fileName = `qrcode-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await client.storage
+        .from("qrcode")
+        .upload(fileName, selectedFile, {
+          cacheControl: "3600",
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = client.storage
+        .from("qrcode")
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    }
+
+    async function saveSettings() {
       const qqNumber = qqInput.value.trim();
 
       if (!qqNumber) {
@@ -265,29 +294,37 @@
         return;
       }
 
-      localStorage.setItem(STORAGE_QQ_KEY, qqNumber);
-      localStorage.setItem(STORAGE_QR_KEY, selectedQrImage);
+      saveButton.disabled = true;
+      saveButton.textContent = "保存中...";
 
-      adminTip.classList.remove("error");
-      adminTip.textContent = "保存成功，前台页面已更新";
+      try {
+        const qrImageUrl = await uploadQrImageIfNeeded();
 
-      setTimeout(() => {
-        adminTip.textContent = "";
-      }, 2000);
-    }
+        const { error } = await client
+          .from("site_config")
+          .update({
+            qq_number: qqNumber,
+            qr_image_url: qrImageUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", 1);
 
-    function resetSettings() {
-      const isConfirm = confirm("确定要恢复默认 QQ 号和二维码吗？");
-      if (!isConfirm) return;
+        if (error) throw error;
 
-      localStorage.removeItem(STORAGE_QQ_KEY);
-      localStorage.removeItem(STORAGE_QR_KEY);
+        currentQrImageUrl = qrImageUrl;
+        selectedFile = null;
+        qrInput.value = "";
 
-      qrInput.value = "";
-      loadSettings();
-
-      adminTip.classList.remove("error");
-      adminTip.textContent = "已恢复默认设置";
+        adminTip.classList.remove("error");
+        adminTip.textContent = "保存成功，所有访客刷新前台即可看到最新内容";
+      } catch (error) {
+        console.error(error);
+        adminTip.classList.add("error");
+        adminTip.textContent = "保存失败，请检查 Supabase 权限、Storage bucket 或管理员邮箱";
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "保存修改";
+      }
     }
 
     qrInput.addEventListener("change", function () {
@@ -300,33 +337,42 @@
         return;
       }
 
-      const reader = new FileReader();
+      if (file.size > 1024 * 1024) {
+        adminTip.classList.add("error");
+        adminTip.textContent = "图片太大，请选择小于 1MB 的二维码图片";
+        return;
+      }
 
-      reader.onload = function (event) {
-        selectedQrImage = event.target.result;
-        qrPreview.src = selectedQrImage;
+      selectedFile = file;
+      qrPreview.src = URL.createObjectURL(file);
 
-        adminTip.classList.remove("error");
-        adminTip.textContent = "图片已选择，点击保存后生效";
-      };
-
-      reader.readAsDataURL(file);
+      adminTip.classList.remove("error");
+      adminTip.textContent = "图片已选择，点击保存后生效";
     });
 
     loginButton.addEventListener("click", login);
 
     passwordInput.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") {
-        login();
-      }
+      if (event.key === "Enter") login();
     });
 
     saveButton.addEventListener("click", saveSettings);
-    resetButton.addEventListener("click", resetSettings);
-    logoutButton.addEventListener("click", showLogin);
+
+    logoutButton.addEventListener("click", async function () {
+      await client.auth.signOut();
+    });
 
     openFrontButton.addEventListener("click", function () {
       window.open("./index.html", "_blank");
+    });
+
+    client.auth.onAuthStateChange(async function (_event, session) {
+      if (session) {
+        showAdmin();
+        await loadSettings();
+      } else {
+        showLogin();
+      }
     });
   </script>
 </body>
