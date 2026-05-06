@@ -234,9 +234,14 @@
         return;
       }
 
-      qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
-      currentQrImageUrl = data.qr_image_url || DEFAULT_QR_IMAGE;
-      qrPreview.src = currentQrImageUrl;
+qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
+currentQrImageUrl = data.qr_image_url || DEFAULT_QR_IMAGE;
+
+if (currentQrImageUrl) {
+  qrPreview.src = currentQrImageUrl;
+} else {
+  qrPreview.removeAttribute("src");
+}
     }
 
     async function login() {
