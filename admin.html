@@ -164,7 +164,7 @@
       </div>
 
       <p class="tip">当前二维码预览</p>
-     <img class="qr-image" id="qrPreview" alt="QQ二维码预览" />
+   <img class="qr-image" id="qrPreview" alt="QQ二维码预览" style="display: none;" />
 
       <button class="primary" id="saveButton">保存修改</button>
       <button class="secondary" id="openFrontButton">打开前台页面</button>
@@ -221,28 +221,34 @@
       loginBox.classList.remove("hidden");
     }
 
-    async function loadSettings() {
-      const { data, error } = await client
-        .from("site_config")
-        .select("qq_number, qr_image_url")
-        .eq("id", 1)
-        .single();
+   async function loadSettings() {
+  const { data, error } = await client
+    .from("site_config")
+    .select("qq_number, qr_image_url")
+    .eq("id", 1)
+    .single();
 
-      if (error) {
-        adminTip.classList.add("error");
-        adminTip.textContent = "读取配置失败，请检查数据库表和权限";
-        return;
-      }
+  if (error) {
+    adminTip.classList.add("error");
+    adminTip.textContent = "读取配置失败，请检查数据库表和权限";
+    qrPreview.removeAttribute("src");
+    qrPreview.style.display = "none";
+    return;
+  }
 
-qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
-currentQrImageUrl = data.qr_image_url || DEFAULT_QR_IMAGE;
+  qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
+  currentQrImageUrl = data.qr_image_url || "";
 
-if (currentQrImageUrl) {
-  qrPreview.src = currentQrImageUrl;
-} else {
-  qrPreview.removeAttribute("src");
+  if (currentQrImageUrl) {
+    qrPreview.src = currentQrImageUrl;
+    qrPreview.style.display = "inline-block";
+  } else {
+    qrPreview.removeAttribute("src");
+    qrPreview.style.display = "none";
+    adminTip.classList.remove("error");
+    adminTip.textContent = "当前还没有二维码，请上传新的二维码图片";
+  }
 }
-    }
 
     async function login() {
       const email = emailInput.value.trim();
@@ -316,10 +322,12 @@ if (currentQrImageUrl) {
 
         if (error) throw error;
 
-        currentQrImageUrl = qrImageUrl;
-        selectedFile = null;
-        qrInput.value = "";
+       currentQrImageUrl = qrImageUrl;
+selectedFile = null;
+qrInput.value = "";
 
+qrPreview.src = currentQrImageUrl;
+qrPreview.style.display = "inline-block";
         adminTip.classList.remove("error");
         adminTip.textContent = "保存成功，所有访客刷新前台即可看到最新内容";
       } catch (error) {
@@ -332,28 +340,31 @@ if (currentQrImageUrl) {
       }
     }
 
-    qrInput.addEventListener("change", function () {
-      const file = qrInput.files[0];
-      if (!file) return;
+qrInput.addEventListener("change", function () {
+  const file = qrInput.files[0];
+  if (!file) return;
 
-      if (!file.type.startsWith("image/")) {
-        adminTip.classList.add("error");
-        adminTip.textContent = "请选择图片文件";
-        return;
-      }
+  if (!file.type.startsWith("image/")) {
+    adminTip.classList.add("error");
+    adminTip.textContent = "请选择图片文件";
+    return;
+  }
 
-      if (file.size > 1024 * 1024) {
-        adminTip.classList.add("error");
-        adminTip.textContent = "图片太大，请选择小于 1MB 的二维码图片";
-        return;
-      }
+  if (file.size > 1024 * 1024) {
+    adminTip.classList.add("error");
+    adminTip.textContent = "图片太大，请选择小于 1MB 的二维码图片";
+    return;
+  }
 
-      selectedFile = file;
-      qrPreview.src = URL.createObjectURL(file);
+  selectedFile = file;
 
-      adminTip.classList.remove("error");
-      adminTip.textContent = "图片已选择，点击保存后生效";
-    });
+  const previewUrl = URL.createObjectURL(file);
+  qrPreview.src = previewUrl;
+  qrPreview.style.display = "inline-block";
+
+  adminTip.classList.remove("error");
+  adminTip.textContent = "新二维码已预览，点击保存后前台生效";
+});
 
     loginButton.addEventListener("click", login);
 
