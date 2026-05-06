@@ -274,36 +274,105 @@
       loginTip.textContent = "";
     }
 
-    async function uploadQrImageIfNeeded() {
-      if (!selectedFile) return currentQrImageUrl;
+   function withTimeout(promise, timeoutMs, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(message));
+      }, timeoutMs);
+    })
+  ]);
+}
 
-      const fileExt = selectedFile.name.split(".").pop() || "png";
-      const fileName = `qrcode-${Date.now()}.${fileExt}`;
+async function uploadQrImageIfNeeded() {
+  if (!selectedFile) return currentQrImageUrl;
 
-      const { error: uploadError } = await client.storage
-        .from("qrcode")
-        .upload(fileName, selectedFile, {
-          cacheControl: "3600",
-          upsert: false
-        });
+  const fileExt = selectedFile.name.split(".").pop() || "png";
+  const fileName = `qrcode-${Date.now()}.${fileExt}`;
 
-      if (uploadError) throw uploadError;
+  const uploadResult = await withTimeout(
+    client.storage
+      .from("qrcode")
+      .upload(fileName, selectedFile, {
+        cacheControl: "3600",
+        upsert: false
+      }),
+    15000,
+    "图片上传超时，请检查 Supabase Storage、网络或 qrcode bucket 权限"
+  );
 
-      const { data } = client.storage
-        .from("qrcode")
-        .getPublicUrl(fileName);
+  if (uploadResult.error) {
+    throw uploadResult.error;
+  }
 
-      return data.publicUrl;
+  const { data } = client.storage
+    .from("qrcode")
+    .getPublicUrl(fileName);
+
+  if (!data || !data.publicUrl) {
+    throw new Error("获取二维码图片公开地址失败");
+  }
+
+  return data.publicUrl;
+}
+
+async function saveSettings() {
+  const qqNumber = qqInput.value.trim();
+
+  if (!qqNumber) {
+    adminTip.classList.add("error");
+    adminTip.textContent = "QQ 号不能为空";
+    return;
+  }
+
+  saveButton.disabled = true;
+  saveButton.textContent = "保存中...";
+  adminTip.classList.remove("error");
+  adminTip.textContent = "正在保存，请稍候...";
+
+  try {
+    const qrImageUrl = await uploadQrImageIfNeeded();
+
+    if (!qrImageUrl) {
+      throw new Error("请先上传二维码图片");
     }
 
-    async function saveSettings() {
-      const qqNumber = qqInput.value.trim();
+    const updateResult = await withTimeout(
+      client
+        .from("site_config")
+        .update({
+          qq_number: qqNumber,
+          qr_image_url: qrImageUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", 1),
+      15000,
+      "数据库保存超时，请检查 Supabase 表权限或网络"
+    );
 
-      if (!qqNumber) {
-        adminTip.classList.add("error");
-        adminTip.textContent = "QQ 号不能为空";
-        return;
-      }
+    if (updateResult.error) {
+      throw updateResult.error;
+    }
+
+    currentQrImageUrl = qrImageUrl;
+    selectedFile = null;
+    qrInput.value = "";
+
+    qrPreview.src = currentQrImageUrl;
+    qrPreview.style.display = "inline-block";
+
+    adminTip.classList.remove("error");
+    adminTip.textContent = "保存成功，所有访客刷新前台即可看到最新内容";
+  } catch (error) {
+    console.error("保存失败：", error);
+    adminTip.classList.add("error");
+    adminTip.textContent = "保存失败：" + (error.message || "未知错误");
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "保存修改";
+  }
+}
 
       saveButton.disabled = true;
       saveButton.textContent = "保存中...";
