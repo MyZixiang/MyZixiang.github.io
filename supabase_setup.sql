@@ -29,10 +29,10 @@ create policy "admin can update site config"
 on public.site_config
 for update
 to authenticated
-using ((auth.jwt() ->> 'email') = 'ADMIN_EMAIL_HERE')
+using ((auth.jwt() ->> 'email') = '2094783129@qq.com')
 with check (
   id = 1
-  and (auth.jwt() ->> 'email') = 'ADMIN_EMAIL_HERE'
+  and (auth.jwt() ->> 'email') = '2094783129@qq.com'
 );
 
 -- 创建公开 Storage bucket，用来放二维码图片
@@ -54,5 +54,5 @@ for insert
 to authenticated
 with check (
   bucket_id = 'qrcode'
-  and (auth.jwt() ->> 'email') = 'ADMIN_EMAIL_HERE'
+  and (auth.jwt() ->> 'email') = '2094783129@qq.com'
 );
