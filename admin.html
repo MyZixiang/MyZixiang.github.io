@@ -164,7 +164,7 @@
       </div>
 
       <p class="tip">当前二维码预览</p>
-      <img class="qr-image" id="qrPreview" src="./qq-qrcode.png" alt="QQ二维码预览" />
+     <img class="qr-image" id="qrPreview" alt="QQ二维码预览" />
 
       <button class="primary" id="saveButton">保存修改</button>
       <button class="secondary" id="openFrontButton">打开前台页面</button>
@@ -186,7 +186,7 @@
     const SUPABASE_ANON_KEY = "sb_publishable_zqBKbdxgNpOkHi3ILUfgaQ_ZB3xvUO1";
 
     const DEFAULT_QQ_NUMBER = "123456789";
-    const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
+  const DEFAULT_QR_IMAGE = "";
 
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
