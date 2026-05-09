@@ -76,27 +76,40 @@
     }
 
     .error { color: #dc2626; }
+
+    /* 新增全程保密发货图片样式 */
+    .confidential-image {
+      width: 100%;
+      max-width: 550px;
+      margin: 24px auto 0;
+      display: block;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
   <main class="card">
     <h1 class="title">扫码添加 QQ</h1>
 
-   <img class="qr-image" id="qrImage" alt="QQ二维码" />
-    <p class="desc">手机截图扫描二维码或点击复制QQ号添加QQ</p>
+    <img class="qr-image" id="qrImage" src="./qq-qrcode.png" alt="QQ二维码" />
+
+    <p class="desc">手机先截图或长按屏幕保存上方二维码<br>打开QQ扫描本地图片添加QQ</p>
 
     <button class="copy-button" id="copyButton">点击此处复制QQ号</button>
     <p class="tip" id="tip"></p>
+
+    <!-- 新增全程保密发货图片 -->
+    <img class="confidential-image" src="private.png" alt="全程保密发货" />
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     // 这里换成你自己的 Supabase 项目信息
-    const SUPABASE_URL = "https://titerffyuwgosbrvfash.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_zqBKbdxgNpOkHi3ILUfgaQ_ZB3xvUO1";
+    const SUPABASE_URL = "";
+    const SUPABASE_ANON_KEY = "替换成你的 anon/public key";
 
     const DEFAULT_QQ_NUMBER = "123456789";
-  const DEFAULT_QR_IMAGE = "";
+    const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
 
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
