@@ -27,13 +27,7 @@
     }
     .title { margin: 0 0 20px; font-size: 24px; font-weight: 700; }
     .form-group { margin-top: 18px; text-align: left; }
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #374151;
-    }
+    .form-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: #374151; }
     .form-group input {
       width: 100%;
       padding: 13px 14px;
@@ -67,23 +61,18 @@
       font-weight: 600;
       cursor: pointer;
     }
-    button:disabled { opacity: 0.65; cursor: not-allowed; }
     .primary {
       margin-top: 22px;
       background: #1677ff;
       color: #ffffff;
       box-shadow: 0 10px 22px rgba(22, 119, 255, 0.24);
     }
+    .primary:hover { background: #0f63d8; }
     .secondary { background: #f3f4f6; color: #374151; }
+    .secondary:hover { background: #e5e7eb; }
     .danger { background: #fee2e2; color: #b91c1c; }
-    .tip {
-      margin: 14px 0 0;
-      min-height: 22px;
-      font-size: 14px;
-      color: #16a34a;
-      line-height: 1.5;
-      word-break: break-all;
-    }
+    .danger:hover { background: #fecaca; }
+    .tip { margin: 14px 0 0; min-height: 22px; font-size: 14px; color: #16a34a; line-height: 1.5; }
     .error { color: #dc2626; }
     .note {
       margin: 18px 0 0;
@@ -100,77 +89,78 @@
 </head>
 <body>
   <main class="card">
+    <!-- 登录 -->
     <section id="loginBox">
       <h1 class="title">后台登录</h1>
-
       <div class="form-group">
         <label for="emailInput">管理员邮箱</label>
         <input id="emailInput" type="email" placeholder="请输入管理员邮箱" />
       </div>
-
       <div class="form-group">
         <label for="passwordInput">管理密码</label>
         <input id="passwordInput" type="password" placeholder="请输入管理密码" />
       </div>
-
-      <button class="primary" id="loginButton" onclick="login()">登录后台</button>
-      <p class="tip" id="loginTip">后台脚本已加载，可以登录。</p>
+      <button class="primary" id="loginButton">登录后台</button>
+      <p class="tip" id="loginTip"></p>
     </section>
 
+    <!-- 管理界面 -->
     <section id="adminBox" class="hidden">
       <h1 class="title">QQ 信息管理</h1>
-
       <div class="form-group">
         <label for="qqInput">QQ 号</label>
         <input id="qqInput" type="text" placeholder="请输入 QQ 号" />
       </div>
-
       <div class="form-group">
         <label for="qrInput">更换二维码图片</label>
-        <input id="qrInput" type="file" accept="image/*" onchange="previewQrImage()" />
+        <input id="qrInput" type="file" accept="image/*" />
       </div>
-
       <p class="tip">当前二维码预览</p>
-      <img class="qr-image" id="qrPreview" alt="QQ二维码预览" style="display: none;" />
+      <img class="qr-image" id="qrPreview" src="./qq-qrcode.png" alt="QQ二维码预览" />
 
-      <button class="primary" id="saveButton" onclick="saveSettings()">保存修改</button>
-      <button class="secondary" onclick="window.open('./index.html', '_blank')">打开前台页面</button>
-      <button class="danger" onclick="logout()">退出后台</button>
+      <button class="primary" id="saveButton">保存修改</button>
+      <button class="secondary" id="openFrontButton">打开前台页面</button>
+      <button class="danger" id="logoutButton">退出后台</button>
 
       <p class="tip" id="adminTip"></p>
 
       <div class="note">
-        这个版本不依赖 Supabase JS 外部库，直接用 fetch 连接 Supabase。<br />
-        如果保存失败，下面会显示具体错误。
+        保存后，所有访客打开前台都会读取 Supabase 云端最新内容。<br />
+        建议二维码图片小于 1MB。
       </div>
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://titerffyuwgosbrvfash.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_zqBKbdxgNpOkHi3ILUfgaQ_ZB3xvUO1";
-    const DEFAULT_QQ_NUMBER = "123456789";
+    const SUPABASE_ANON_KEY = "sb_publishable_zqBKbdxgNpOkHi3ILUfgaQ_ZB3xvUO1";
 
-    let accessToken = "";
-    let selectedFile = null;
-    let currentQrImageUrl = "";
+    const DEFAULT_QQ_NUMBER = "123456789";
+    const DEFAULT_QR_IMAGE = "./qq-qrcode.png";
+
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const loginBox = document.getElementById("loginBox");
     const adminBox = document.getElementById("adminBox");
+
     const emailInput = document.getElementById("emailInput");
     const passwordInput = document.getElementById("passwordInput");
     const loginButton = document.getElementById("loginButton");
-    const loginTip = document.getElementById("loginTip");
+    const logoutButton = document.getElementById("logoutButton");
+
     const qqInput = document.getElementById("qqInput");
     const qrInput = document.getElementById("qrInput");
     const qrPreview = document.getElementById("qrPreview");
+
     const saveButton = document.getElementById("saveButton");
+    const openFrontButton = document.getElementById("openFrontButton");
+
+    const loginTip = document.getElementById("loginTip");
     const adminTip = document.getElementById("adminTip");
 
-    function setText(el, text, isError = false) {
-      el.textContent = text;
-      el.classList.toggle("error", isError);
-    }
+    let selectedFile = null;
+    let currentQrImageUrl = DEFAULT_QR_IMAGE;
 
     function showAdmin() {
       loginBox.classList.add("hidden");
@@ -182,38 +172,22 @@
       loginBox.classList.remove("hidden");
     }
 
-    function showQr(url) {
-      if (url) {
-        qrPreview.src = url;
-        qrPreview.style.display = "inline-block";
-      } else {
-        qrPreview.removeAttribute("src");
-        qrPreview.style.display = "none";
-      }
-    }
+    async function loadSettings() {
+      const { data, error } = await client
+        .from("site_config")
+        .select("qq_number, qr_image_url")
+        .eq("id", 1)
+        .single();
 
-    async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal
-        });
-        return response;
-      } finally {
-        clearTimeout(timer);
+      if (error) {
+        adminTip.classList.add("error");
+        adminTip.textContent = "读取配置失败，请检查数据库表和权限";
+        return;
       }
-    }
 
-    async function readError(response) {
-      try {
-        const data = await response.json();
-        return data.message || data.error_description || data.error || JSON.stringify(data);
-      } catch (e) {
-        return await response.text();
-      }
+      qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
+      currentQrImageUrl = data.qr_image_url || DEFAULT_QR_IMAGE;
+      qrPreview.src = currentQrImageUrl;
     }
 
     async function login() {
@@ -221,222 +195,119 @@
       const password = passwordInput.value.trim();
 
       if (!email || !password) {
-        setText(loginTip, "请输入邮箱和密码", true);
+        loginTip.classList.add("error");
+        loginTip.textContent = "请输入邮箱和密码";
         return;
       }
 
-      loginButton.disabled = true;
-      loginButton.textContent = "登录中...";
-      setText(loginTip, "正在登录...");
+      const { error } = await client.auth.signInWithPassword({ email, password });
 
-      try {
-        const response = await fetchWithTimeout(
-          SUPABASE_URL + "/auth/v1/token?grant_type=password",
-          {
-            method: "POST",
-            headers: {
-              "apikey": SUPABASE_KEY,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ email, password })
-          },
-          20000
-        );
-
-        if (!response.ok) {
-          throw new Error(await readError(response));
-        }
-
-        const data = await response.json();
-        accessToken = data.access_token;
-
-        if (!accessToken) {
-          throw new Error("登录成功但没有拿到 access_token");
-        }
-
-        setText(loginTip, "");
-        showAdmin();
-        await loadSettings();
-      } catch (error) {
-        setText(loginTip, "登录失败：" + (error.message || "未知错误"), true);
-      } finally {
-        loginButton.disabled = false;
-        loginButton.textContent = "登录后台";
+      if (error) {
+        loginTip.classList.add("error");
+        loginTip.textContent = "登录失败，请检查邮箱或密码";
+        return;
       }
+
+      loginTip.textContent = "";
     }
 
-    async function loadSettings() {
-      setText(adminTip, "正在读取当前配置...");
-
-      try {
-        const response = await fetchWithTimeout(
-          SUPABASE_URL + "/rest/v1/site_config?id=eq.1&select=qq_number,qr_image_url",
-          {
-            method: "GET",
-            headers: {
-              "apikey": SUPABASE_KEY,
-              "Authorization": "Bearer " + accessToken
-            }
-          },
-          20000
-        );
-
-        if (!response.ok) {
-          throw new Error(await readError(response));
-        }
-
-        const rows = await response.json();
-        const data = rows[0];
-
-        if (!data) {
-          qqInput.value = DEFAULT_QQ_NUMBER;
-          currentQrImageUrl = "";
-          showQr("");
-          setText(adminTip, "没有读取到 site_config 的 id=1 数据，请检查数据库。", true);
-          return;
-        }
-
-        qqInput.value = data.qq_number || DEFAULT_QQ_NUMBER;
-        currentQrImageUrl = data.qr_image_url || "";
-        showQr(currentQrImageUrl);
-
-        if (currentQrImageUrl) {
-          setText(adminTip, "配置读取成功。");
-        } else {
-          setText(adminTip, "当前没有二维码，请上传新的二维码图片。");
-        }
-      } catch (error) {
-        setText(adminTip, "读取配置失败：" + (error.message || "未知错误"), true);
-      }
-    }
-
-    function previewQrImage() {
+    qrInput.addEventListener("change", function () {
       const file = qrInput.files[0];
       if (!file) return;
 
       if (!file.type.startsWith("image/")) {
-        setText(adminTip, "请选择图片文件。", true);
+        adminTip.classList.add("error");
+        adminTip.textContent = "请选择图片文件";
         return;
       }
 
       if (file.size > 1024 * 1024) {
-        setText(adminTip, "图片太大，请选择小于 1MB 的二维码图片。", true);
+        adminTip.classList.add("error");
+        adminTip.textContent = "图片太大，请选择小于 1MB 的二维码图片";
         return;
       }
 
       selectedFile = file;
-      showQr(URL.createObjectURL(file));
-      setText(adminTip, "新二维码已预览，点击保存后前台生效。");
-    }
+      qrPreview.src = URL.createObjectURL(file);
+      adminTip.classList.remove("error");
+      adminTip.textContent = "图片已选择，点击保存后生效";
+    });
 
     async function uploadQrImageIfNeeded() {
-      if (!selectedFile) {
-        return currentQrImageUrl;
-      }
+      if (!selectedFile) return currentQrImageUrl;
 
       const fileExt = selectedFile.name.split(".").pop() || "png";
-      const fileName = "qrcode-" + Date.now() + "." + fileExt;
+      const fileName = `qrcode-${Date.now()}.${fileExt}`;
 
-      const response = await fetchWithTimeout(
-        SUPABASE_URL + "/storage/v1/object/qrcode/" + encodeURIComponent(fileName),
-        {
-          method: "POST",
-          headers: {
-            "apikey": SUPABASE_KEY,
-            "Authorization": "Bearer " + accessToken,
-            "Content-Type": selectedFile.type || "application/octet-stream"
-          },
-          body: selectedFile
-        },
-        30000
-      );
+      const { data: uploadData, error: uploadError } = await client.storage
+        .from("qrcode")
+        .upload(fileName, selectedFile, { cacheControl: "3600", upsert: true });
 
-      if (!response.ok) {
-        throw new Error(await readError(response));
-      }
+      if (uploadError) throw uploadError;
 
-      return SUPABASE_URL + "/storage/v1/object/public/qrcode/" + encodeURIComponent(fileName);
+      const { data: publicUrlData } = client.storage
+        .from("qrcode")
+        .getPublicUrl(fileName);
+
+      return publicUrlData.publicUrl;
     }
 
     async function saveSettings() {
       const qqNumber = qqInput.value.trim();
 
-      if (!accessToken) {
-        setText(adminTip, "请先登录后台。", true);
-        return;
-      }
-
       if (!qqNumber) {
-        setText(adminTip, "QQ 号不能为空。", true);
-        return;
-      }
-
-      if (!selectedFile && !currentQrImageUrl) {
-        setText(adminTip, "请先上传二维码图片。", true);
+        adminTip.classList.add("error");
+        adminTip.textContent = "QQ 号不能为空";
         return;
       }
 
       saveButton.disabled = true;
       saveButton.textContent = "保存中...";
-      setText(adminTip, "正在保存，请稍候...");
 
       try {
         const qrImageUrl = await uploadQrImageIfNeeded();
 
-        if (!qrImageUrl) {
-          throw new Error("二维码图片地址为空，请重新上传。");
-        }
+        const { error } = await client
+          .from("site_config")
+          .update({
+            qq_number: qqNumber,
+            qr_image_url: qrImageUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", 1);
 
-        const response = await fetchWithTimeout(
-          SUPABASE_URL + "/rest/v1/site_config?id=eq.1",
-          {
-            method: "PATCH",
-            headers: {
-              "apikey": SUPABASE_KEY,
-              "Authorization": "Bearer " + accessToken,
-              "Content-Type": "application/json",
-              "Prefer": "return=representation"
-            },
-            body: JSON.stringify({
-              qq_number: qqNumber,
-              qr_image_url: qrImageUrl,
-              updated_at: new Date().toISOString()
-            })
-          },
-          30000
-        );
-
-        if (!response.ok) {
-          throw new Error(await readError(response));
-        }
+        if (error) throw error;
 
         currentQrImageUrl = qrImageUrl;
         selectedFile = null;
         qrInput.value = "";
-        showQr(currentQrImageUrl);
-        setText(adminTip, "保存成功，所有访客刷新前台即可看到最新内容。");
-      } catch (error) {
-        setText(adminTip, "保存失败：" + (error.message || "未知错误"), true);
+
+        adminTip.classList.remove("error");
+        adminTip.textContent = "保存成功，所有访客刷新前台即可看到最新内容";
+      } catch (err) {
+        console.error(err);
+        adminTip.classList.add("error");
+        adminTip.textContent = "保存失败，请检查 Supabase 权限或 Storage bucket";
       } finally {
         saveButton.disabled = false;
         saveButton.textContent = "保存修改";
       }
     }
 
-    function logout() {
-      accessToken = "";
-      selectedFile = null;
-      currentQrImageUrl = "";
-      qrInput.value = "";
-      showQr("");
-      showLogin();
-      setText(loginTip, "已退出，请重新登录。");
-    }
+    loginButton.addEventListener("click", login);
+    passwordInput.addEventListener("keydown", function (e) { if(e.key === "Enter") login(); });
+    saveButton.addEventListener("click", saveSettings);
+    logoutButton.addEventListener("click", async () => await client.auth.signOut());
+    openFrontButton.addEventListener("click", () => window.open("./index.html","_blank"));
 
-    passwordInput.addEventListener("keydown", function (event) {
-      if (event.key === "Enter") login();
+    client.auth.onAuthStateChange(async (_event, session) => {
+      if(session) {
+        showAdmin();
+        await loadSettings();
+      } else {
+        showLogin();
+      }
     });
   </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"7939e04a4baf43c8b86a560f74aac60e","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
